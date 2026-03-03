@@ -28,7 +28,6 @@ data class ShoppingListItem(
     var isEditing: Boolean = false
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShoppingListApp() {
     var sItems by remember {

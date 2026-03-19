@@ -33,7 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-data class ShoppingListItem(
+data class ShoppingItem(
     val id: Int,
     var name: String,
     var quantity: Int,
@@ -43,7 +43,7 @@ data class ShoppingListItem(
 @Composable
 fun ShoppingListApp() {
     var sItems by remember {
-        mutableStateOf(listOf<ShoppingListItem>())
+        mutableStateOf(listOf<ShoppingItem>())
     }
     var itemName by remember {
         mutableStateOf("")
@@ -69,8 +69,24 @@ fun ShoppingListApp() {
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            items(sItems) {
-
+            items(sItems) { item ->
+                if (item.isEditing) {
+                    ShoppingItemEditor(item = item, onEditComplete = { editedName, editedQuantity ->
+                        sItems = sItems.map { it.copy(isEditing = false) }
+                        val editedItem = sItems.find { it.id == item.id }
+                        editedItem?.let {
+                            it.name = editedName
+                            it.quantity = editedQuantity
+                        }
+                    })
+                } else {
+                    ShoppingListItem(item = item, onEditClick = {
+                        // finding out which item we are editing and changing is "isEditing boolean" to true
+                        sItems = sItems.map { it.copy(isEditing = it.id == item.id) }
+                    }, onDeleteClick = {
+                        sItems = sItems - item
+                    })
+                }
             }
         }
     }
@@ -86,7 +102,7 @@ fun ShoppingListApp() {
                 ) {
                     Button(onClick = {
                         if (itemName.isNotBlank()) {
-                            val newItem = ShoppingListItem(
+                            val newItem = ShoppingItem(
                                 id = sItems.size + 1,
                                 name = itemName,
                                 quantity = itemQuantity.toInt()
@@ -132,7 +148,7 @@ fun ShoppingListApp() {
 }
 
 @Composable
-fun ShoppingItemEditor(item: ShoppingListItem, onEditComplete: (String, Int) -> Unit) {
+fun ShoppingItemEditor(item: ShoppingItem, onEditComplete: (String, Int) -> Unit) {
     var editedName by remember {
         mutableStateOf(item.name)
     }
@@ -178,7 +194,7 @@ fun ShoppingItemEditor(item: ShoppingListItem, onEditComplete: (String, Int) -> 
 
 @Composable
 fun ShoppingListItem(
-    item: ShoppingListItem,
+    item: ShoppingItem,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
@@ -188,7 +204,8 @@ fun ShoppingListItem(
             .fillMaxWidth()
             .border(
                 border = BorderStroke(2.dp, Color(0XFF018786)), shape = RoundedCornerShape(20)
-            )
+            ),
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(text = item.name, modifier = Modifier.padding(8.dp))
         Text(text = "Qty: ${item.quantity}", modifier = Modifier.padding(8.dp))

@@ -1,6 +1,10 @@
 package com.cnes.myshoppinglist
 
+import android.Manifest
 import android.content.Context
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.navigation.NavController
 
 data class ShoppingItem(
@@ -55,15 +60,49 @@ fun ShoppingListApp(
     var sItems by remember {
         mutableStateOf(listOf<ShoppingItem>())
     }
+    var showDialog by remember {
+        mutableStateOf(false)
+    }
     var itemName by remember {
         mutableStateOf("")
     }
     var itemQuantity by remember {
         mutableStateOf("")
     }
-    var showDialog by remember {
-        mutableStateOf(false)
-    }
+
+    val requestPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true &&
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            ) {
+                // I have access to location
+                locationUtils.requestLocationUpdates(viewModel = viewModel)
+            } else {
+                // Ask for permission
+                val rationaleRequired = ActivityCompat.shouldShowRequestPermissionRationale(
+                    context as MainActivity,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) || ActivityCompat.shouldShowRequestPermissionRationale(
+                    context,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+                if (rationaleRequired) {
+                    Toast.makeText(
+                        context,
+                        "Location permission is required to get your location",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        context,
+                        "Location permission is required. Please enable them in Android Settings.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        })
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center
@@ -151,6 +190,23 @@ fun ShoppingListApp(
                             .fillMaxWidth()
                             .padding(8.dp)
                     )
+                    Button(onClick = {
+                        if (locationUtils.hasLocationPermission(context)) {
+                            locationUtils.requestLocationUpdates(viewModel)
+                            navController.navigate("locationscreen") {
+                                this.launchSingleTop
+                            }
+                        } else {
+                            requestPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
+                        }
+                    }) {
+                        Text(text = "Address")
+                    }
                 }
             }
         )
@@ -217,9 +273,11 @@ fun ShoppingListItem(
             ),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(modifier = Modifier
-            .weight(1f)
-            .padding(8.dp)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(8.dp)
+        ) {
             Row {
                 Text(text = item.name, modifier = Modifier.padding(8.dp))
                 Text(text = "Qty: ${item.quantity}", modifier = Modifier.padding(8.dp))
